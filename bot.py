@@ -1,8 +1,22 @@
-import os
+from flask import Flask
+from threading import Thread
 import requests
-import re
+import time
+import os
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Flask app for Render
+flask_app = Flask('')
+
+@flask_app.route('/')
+def home():
+    return "Bot is running!"
+
+def keep_alive():
+    flask_app.run(host='0.0.0.0', port=10000)
+
+Thread(target=keep_alive, daemon=True).start()
 
 # Get bot token from environment variable
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -616,7 +630,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🤖 Bot is running...")
+    print("🤖 Bot is running on Render...")
     print("👨‍💻 Developer: NINAD")
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
