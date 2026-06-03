@@ -1,10 +1,15 @@
+import os
 import requests
 import re
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# REPLACE WITH YOUR BOT TOKEN FROM @BotFather
-BOT_TOKEN = "8854405532:AAFafO40OvQ7UOx_F7wSpLwNLTgJQQobGjU"
+# Get bot token from environment variable
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    print("❌ BOT_TOKEN environment variable not set!")
+    exit(1)
 
 # Store user data
 user_data = {}
@@ -40,148 +45,7 @@ def get_result(response):
     except:
         return "Invalid response"
 
-# ============= BIND CHANGE WITH SECURITY CODE =============
-def bind_change_with_security(token, email, security_code):
-    url = "https://chngemailcode48.vercel.app/send_otp"
-    try:
-        # Step 1: Send OTP to new email
-        r = requests.get(url, params={'access_token': token, 'email': email}, timeout=30)
-        if not is_success(r):
-            return f"❌ Failed to send OTP: {get_result(r)}"
-        
-        # OTP is sent, need user to provide it
-        return f"✅ OTP sent to {email}\n\nPlease send the OTP code:"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-def bind_change_verify_otp(token, email, otp):
-    url = "https://chngemailcode48.vercel.app/verify_otp"
-    try:
-        r = requests.get(url, params={'access_token': token, 'email': email, 'otp': otp}, timeout=30)
-        if is_success(r):
-            data = r.json()
-            verifier_token = data.get("verifier_token") or data.get("data", {}).get("verifier_token")
-            return f"✅ OTP Verified!\n\nPlease send your Security Code:", verifier_token
-        return f"❌ Invalid OTP: {get_result(r)}", None
-    except Exception as e:
-        return f"❌ Error: {str(e)}", None
-
-def bind_change_verify_security(token, email, security_code, verifier_token):
-    url_i = "https://chngemailcode48.vercel.app/verify_identity"
-    try:
-        r = requests.get(url_i, params={'access_token': token, 'code': security_code}, timeout=30)
-        if is_success(r):
-            data = r.json()
-            identity_token = data.get("identity_token") or data.get("data", {}).get("identity_token")
-            
-            # Final step: Change email
-            url_c = "https://chngemailcode48.vercel.app/create_rebind"
-            r_c = requests.get(url_c, params={'access_token': token, 'email': email, 'identity_token': identity_token, 'verifier_token': verifier_token}, timeout=30)
-            
-            if is_success(r_c):
-                return f"✅ Successfully Changed Email To: {email}!\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
-            return f"❌ Failed to change email: {get_result(r_c)}"
-        return f"❌ Invalid Security Code: {get_result(r)}"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-# ============= BIND CHANGE WITHOUT SECURITY (FORGOT/RESET) =============
-def bind_change_forgot_security(token, current_email, new_email):
-    url1 = "https://chngeforgotcrownx72.vercel.app/otp"
-    try:
-        # Step 1: Send OTP to current email
-        r1 = requests.get(url1, params={'access_token': token, 'current_email': current_email}, timeout=30)
-        if not is_success(r1):
-            return f"❌ Failed to send OTP to current email: {get_result(r1)}", None
-        
-        return f"✅ OTP sent to current email: {current_email}\n\nPlease send the OTP code:", "waiting_otp"
-    except Exception as e:
-        return f"❌ Error: {str(e)}", None
-
-def bind_change_verify_current_otp(token, current_email, otp):
-    url2 = "https://chngeforgotcrownx72.vercel.app/verify"
-    try:
-        r2 = requests.get(url2, params={'access_token': token, 'current_email': current_email, 'otp': otp}, timeout=30)
-        if is_success(r2):
-            data = r2.json()
-            identity_token = data.get("identity_token") or data.get("data", {}).get("identity_token")
-            return f"✅ Current Email Verified!\n\nNow send OTP to new email. Please send your new email address:", identity_token
-        return f"❌ Invalid OTP: {get_result(r2)}", None
-    except Exception as e:
-        return f"❌ Error: {str(e)}", None
-
-def bind_change_send_new_otp(token, new_email, identity_token):
-    url3 = "https://chngeforgotcrownx72.vercel.app/newotp"
-    try:
-        r3 = requests.get(url3, params={'access_token': token, 'new_email': new_email}, timeout=30)
-        if is_success(r3):
-            return f"✅ OTP sent to new email: {new_email}\n\nPlease send the OTP code:", identity_token
-        return f"❌ Failed to send OTP to new email: {get_result(r3)}", None
-    except Exception as e:
-        return f"❌ Error: {str(e)}", None
-
-def bind_change_verify_new_otp(token, new_email, otp, identity_token):
-    url4 = "https://chngeforgotcrownx72.vercel.app/newverify"
-    try:
-        r4 = requests.get(url4, params={'access_token': token, 'new_email': new_email, 'otp': otp}, timeout=30)
-        if is_success(r4):
-            data = r4.json()
-            verifier_token = data.get("verifier_token") or data.get("data", {}).get("verifier_token")
-            
-            # Final change
-            url5 = "https://chngeforgotcrownx72.vercel.app/change"
-            r5 = requests.get(url5, params={'access_token': token, 'new_email': new_email, 'identity_token': identity_token, 'verifier_token': verifier_token}, timeout=30)
-            
-            if is_success(r5):
-                return f"✅ Successfully Changed Email To: {new_email} (Forgot Security Code)!\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
-            return f"❌ Failed to change email: {get_result(r5)}"
-        return f"❌ Invalid OTP: {get_result(r4)}"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-# ============= UNBIND WITH SECURITY CODE =============
-def unbind_with_security(token, security_code):
-    url = "https://crownxnewkey10010.vercel.app/securityunbind"
-    try:
-        r = requests.get(url, params={'access_token': token, 'security_code': security_code}, timeout=30)
-        if is_success(r):
-            return "✅ Unbind Request Created Successfully! 15 Days Timer Started.\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
-        return f"❌ Failed: {get_result(r)}\n\n👨‍💻 Developer: NINAD"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-# ============= UNBIND WITHOUT SECURITY (FORGOT) =============
-def unbind_forgot_security(token, current_email):
-    url1 = "https://chngeforgotcrownx72.vercel.app/otp"
-    try:
-        r1 = requests.get(url1, params={'access_token': token, 'current_email': current_email}, timeout=30)
-        if not is_success(r1):
-            return f"❌ Failed to send OTP: {get_result(r1)}", None
-        
-        return f"✅ OTP sent to: {current_email}\n\nPlease send the OTP code:", "waiting_otp"
-    except Exception as e:
-        return f"❌ Error: {str(e)}", None
-
-def unbind_verify_otp(token, current_email, otp):
-    url2 = "https://chngeforgotcrownx72.vercel.app/verify"
-    try:
-        r2 = requests.get(url2, params={'access_token': token, 'current_email': current_email, 'otp': otp}, timeout=30)
-        if is_success(r2):
-            data = r2.json()
-            identity_token = data.get("identity_token") or data.get("data", {}).get("identity_token")
-            
-            # Proceed with unbind
-            url3 = "https://crownxforgotremove23.vercel.app/forgotunbind"
-            r3 = requests.get(url3, params={'access_token': token, 'identity_token': identity_token}, timeout=30)
-            
-            if is_success(r3):
-                return "✅ Unbind Request Created Successfully! 15 Days Timer Started.\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
-            return f"❌ Failed to unbind: {get_result(r3)}"
-        return f"❌ Invalid OTP: {get_result(r2)}"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-# ============= OTHER API FUNCTIONS =============
+# API Functions
 def api_check_bind(token):
     url = "https://bindinfocrownx612.vercel.app/check"
     try:
@@ -287,7 +151,135 @@ def api_confirm_bind(token, email, otp, security_code):
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-# ============= TELEGRAM HANDLERS =============
+def bind_change_with_security(token, email, security_code):
+    url = "https://chngemailcode48.vercel.app/send_otp"
+    try:
+        r = requests.get(url, params={'access_token': token, 'email': email}, timeout=30)
+        if not is_success(r):
+            return f"❌ Failed to send OTP: {get_result(r)}"
+        return f"✅ OTP sent to {email}\n\nPlease send the OTP code:"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def bind_change_verify_otp(token, email, otp):
+    url = "https://chngemailcode48.vercel.app/verify_otp"
+    try:
+        r = requests.get(url, params={'access_token': token, 'email': email, 'otp': otp}, timeout=30)
+        if is_success(r):
+            data = r.json()
+            verifier_token = data.get("verifier_token") or data.get("data", {}).get("verifier_token")
+            return f"✅ OTP Verified!\n\nPlease send your Security Code:", verifier_token
+        return f"❌ Invalid OTP: {get_result(r)}", None
+    except Exception as e:
+        return f"❌ Error: {str(e)}", None
+
+def bind_change_verify_security(token, email, security_code, verifier_token):
+    url_i = "https://chngemailcode48.vercel.app/verify_identity"
+    try:
+        r = requests.get(url_i, params={'access_token': token, 'code': security_code}, timeout=30)
+        if is_success(r):
+            data = r.json()
+            identity_token = data.get("identity_token") or data.get("data", {}).get("identity_token")
+            
+            url_c = "https://chngemailcode48.vercel.app/create_rebind"
+            r_c = requests.get(url_c, params={'access_token': token, 'email': email, 'identity_token': identity_token, 'verifier_token': verifier_token}, timeout=30)
+            
+            if is_success(r_c):
+                return f"✅ Successfully Changed Email To: {email}!\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
+            return f"❌ Failed to change email: {get_result(r_c)}"
+        return f"❌ Invalid Security Code: {get_result(r)}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def bind_change_forgot_security(token, current_email, new_email):
+    url1 = "https://chngeforgotcrownx72.vercel.app/otp"
+    try:
+        r1 = requests.get(url1, params={'access_token': token, 'current_email': current_email}, timeout=30)
+        if not is_success(r1):
+            return f"❌ Failed to send OTP to current email: {get_result(r1)}", None
+        return f"✅ OTP sent to current email: {current_email}\n\nPlease send the OTP code:", "waiting_otp"
+    except Exception as e:
+        return f"❌ Error: {str(e)}", None
+
+def bind_change_verify_current_otp(token, current_email, otp):
+    url2 = "https://chngeforgotcrownx72.vercel.app/verify"
+    try:
+        r2 = requests.get(url2, params={'access_token': token, 'current_email': current_email, 'otp': otp}, timeout=30)
+        if is_success(r2):
+            data = r2.json()
+            identity_token = data.get("identity_token") or data.get("data", {}).get("identity_token")
+            return f"✅ Current Email Verified!\n\nNow send your new email address:", identity_token
+        return f"❌ Invalid OTP: {get_result(r2)}", None
+    except Exception as e:
+        return f"❌ Error: {str(e)}", None
+
+def bind_change_send_new_otp(token, new_email, identity_token):
+    url3 = "https://chngeforgotcrownx72.vercel.app/newotp"
+    try:
+        r3 = requests.get(url3, params={'access_token': token, 'new_email': new_email}, timeout=30)
+        if is_success(r3):
+            return f"✅ OTP sent to new email: {new_email}\n\nPlease send the OTP code:", identity_token
+        return f"❌ Failed to send OTP to new email: {get_result(r3)}", None
+    except Exception as e:
+        return f"❌ Error: {str(e)}", None
+
+def bind_change_verify_new_otp(token, new_email, otp, identity_token):
+    url4 = "https://chngeforgotcrownx72.vercel.app/newverify"
+    try:
+        r4 = requests.get(url4, params={'access_token': token, 'new_email': new_email, 'otp': otp}, timeout=30)
+        if is_success(r4):
+            data = r4.json()
+            verifier_token = data.get("verifier_token") or data.get("data", {}).get("verifier_token")
+            
+            url5 = "https://chngeforgotcrownx72.vercel.app/change"
+            r5 = requests.get(url5, params={'access_token': token, 'new_email': new_email, 'identity_token': identity_token, 'verifier_token': verifier_token}, timeout=30)
+            
+            if is_success(r5):
+                return f"✅ Successfully Changed Email To: {new_email} (Forgot Security Code)!\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
+            return f"❌ Failed to change email: {get_result(r5)}"
+        return f"❌ Invalid OTP: {get_result(r4)}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def unbind_with_security(token, security_code):
+    url = "https://crownxnewkey10010.vercel.app/securityunbind"
+    try:
+        r = requests.get(url, params={'access_token': token, 'security_code': security_code}, timeout=30)
+        if is_success(r):
+            return "✅ Unbind Request Created Successfully! 15 Days Timer Started.\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
+        return f"❌ Failed: {get_result(r)}\n\n👨‍💻 Developer: NINAD"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+def unbind_forgot_security(token, current_email):
+    url1 = "https://chngeforgotcrownx72.vercel.app/otp"
+    try:
+        r1 = requests.get(url1, params={'access_token': token, 'current_email': current_email}, timeout=30)
+        if not is_success(r1):
+            return f"❌ Failed to send OTP: {get_result(r1)}", None
+        return f"✅ OTP sent to: {current_email}\n\nPlease send the OTP code:", "waiting_otp"
+    except Exception as e:
+        return f"❌ Error: {str(e)}", None
+
+def unbind_verify_otp(token, current_email, otp):
+    url2 = "https://chngeforgotcrownx72.vercel.app/verify"
+    try:
+        r2 = requests.get(url2, params={'access_token': token, 'current_email': current_email, 'otp': otp}, timeout=30)
+        if is_success(r2):
+            data = r2.json()
+            identity_token = data.get("identity_token") or data.get("data", {}).get("identity_token")
+            
+            url3 = "https://crownxforgotremove23.vercel.app/forgotunbind"
+            r3 = requests.get(url3, params={'access_token': token, 'identity_token': identity_token}, timeout=30)
+            
+            if is_success(r3):
+                return "✅ Unbind Request Created Successfully! 15 Days Timer Started.\n\n👨‍💻 Developer: NINAD\n📢 Channel: @clerkmm"
+            return f"❌ Failed to unbind: {get_result(r3)}"
+        return f"❌ Invalid OTP: {get_result(r2)}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+# Telegram Bot Handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [KeyboardButton("🔄 BIND CHANGE")],
@@ -626,7 +618,7 @@ def main():
     
     print("🤖 Bot is running...")
     print("👨‍💻 Developer: NINAD")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
